@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug",
+            "program": "${workspaceRoot}/target/debug/intergration_test-dfcbd4d1aa7b3552",
+            "args": [],
+            "cwd": "${workspaceRoot}"
+        }
+    ]
+}

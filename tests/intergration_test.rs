@@ -389,13 +389,6 @@ fn test_list() {
 #[test]
 fn test_list_id() {
     let raw_string = b"(list add1 sub1 mult1)";
-    /*
-    let result_expr = Expression::List([
-        Expression::ID(String::from("add1")), 
-        Expression::ID(String::from("b")),
-        Expression::ID(String::from("c"))]
-        .to_vec());
-        */
 
     if let IResult::Done(_, expr) = expr_list_id(raw_string) {
         assert_eq!(expr.len(), 3);
@@ -424,13 +417,11 @@ fn test_list_lambda() {
 
 #[test]
 fn test_object_parse() {
-    let raw_string = b"(obj (list add1 sub1) (list (lambda x (+ x 1)) (lambda x (+ x -1))))";
-
-    let res = expr_object(raw_string);
-    let err = res.unwrap_err();
-    println!("err: {:?}", err);
-    // assert_eq!(res, IResult::Error(ErrorKind::Alt));
-//    assert_eq!(expr_object(raw_string), IResult::Done(&b""[..], Expression::Nil));
+    let raw_string = b"
+        (obj 
+            (list add1 sub1)
+            (list (lambda x (+ x 1))
+                  (lambda x (+ x -1))))";
     if let IResult::Done(_, expr) = expression(raw_string) {
     } else {
         assert!(false);
@@ -446,7 +437,6 @@ fn test_object() {
                     (lambda x (+ x -1))))
          (msg o add1 3))";
 
-    assert_eq!(expression(raw_string), IResult::Done(&b""[..], Expression::Nil));
     if let IResult::Done(_, expr) = expression(raw_string) {
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(4));

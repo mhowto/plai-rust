@@ -182,13 +182,13 @@ named!(pub expr_list_id<Vec<String> >, do_parse!(
     (ids)
 ));
 
-named!(pub expr_object<(Vec<String>, Vec<Expression>)>, do_parse!(
+named!(pub expr_object<(Vec<String>, Vec<Expression>)>, ws!(do_parse!(
     tag!("(") >>
     tag!("obj") >>
     ns: expr_list_id >>
     vs: expr_list >>
     tag!(")") >>
-    (ns, vs)
+    (ns, vs))
 ));
 
 named!(expr_msg<(Expression, String, Expression)>, do_parse!(
