@@ -1,0 +1,7 @@
+[package]
+name = "plai-rust"
+version = "0.1.0"
+authors = ["mhowto"]
+
+[dependencies]
+nom = "^2.2"
