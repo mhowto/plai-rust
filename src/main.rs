@@ -75,8 +75,9 @@ use std::rc::Rc;
      Num(i32),
      Plus(Rc<Expression>, Rc<Expression>),
      Uminus(Rc<Expression>),
-     //Bminus(Expression, Expression),
-     //Mult(Expression, i32),
+     Bminus(Rc<Expression>, Rc<Expression>),
+     Mult(Rc<Expression>, Rc<Expression>),
+     If(test: Rc<Expression>, if_expr: Rc<Expression>, else_expr: Rc<Expression>)
  }
 
 named!(nil_expr, tag!("nil"));
@@ -123,6 +124,40 @@ named!(plus_expr<(Expression, Expression)>,
     )
 );
 
+named!(bminus_expr<(Expression, Expression)>,
+    do_parse!(
+        tag!("(") >>
+        tag!("-") >>
+        left: expression >>
+        right: expression >>
+        tag!(")") >>
+        (left, right)
+    )
+);
+
+named!(mult_expr<(Expression, Expression)>,
+    do_parse!(
+        tag!("(") >>
+        tag!("*") >>
+        left: expression >>
+        right: expression >>
+        tag!(")") >>
+        (left, right)
+    )
+);
+
+named!(if_expr<(Expression, Expression, Option<Expression>)>,
+    do_parse!(
+        tag!("(") >>
+        tag!("if") >>
+        test: expression >>
+        if_expr: expression >>
+        else_expr: opt!(expression) >>
+        tag!(")") >>
+        (test, if_expr, else_expr)
+    )
+);
+
 named!(expression<Expression>,
     ws!( // ws! transforms a parser to automatically consume whitespace between each token.
         alt!(  // alt! try a list of parsers, return the result of the first successful one
@@ -131,7 +166,9 @@ named!(expression<Expression>,
             | false_expr    => { |_| Expression::False }
             | num_expr      => { |num| Expression::Num(num) }
             | uminus_expr   => { |val| Expression::Uminus(Rc::new(val)) }
+            | bminus_expr   => { | (left, right) | Expression::Bminus(Rc::new(left), Rc::new(right)) }
             | plus_expr     => { | (left, right) | Expression::Plus(Rc::new(left), Rc::new(right)) }
+            | mult_expr     => { | (left, right) | Expression::Mult(Rc::new(left), Rc::new(right)) }
         )
     )
 );
@@ -140,4 +177,6 @@ fn main() {
     assert_eq!(expression(b"(+ 1 2)"), IResult::Done(&b""[..], Expression::Plus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
     assert_eq!(expression(b"(- 1)"), IResult::Done(&b""[..], Expression::Uminus(Rc::new(Expression::Num(1)))));
     assert_eq!(expression(b"(- (+ 1 2))"), IResult::Done(&b""[..], Expression::Uminus(Rc::new(Expression::Plus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))))));
+    assert_eq!(expression(b"(- 1 2)"), IResult::Done(&b""[..], Expression::Bminus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
+    assert_eq!(expression(b"(* 1 2)"), IResult::Done(&b""[..], Expression::Mult(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
 }
