@@ -169,7 +169,13 @@ named!(expression<Expression>,
             | bminus_expr   => { | (left, right) | Expression::Bminus(Rc::new(left), Rc::new(right)) }
             | plus_expr     => { | (left, right) | Expression::Plus(Rc::new(left), Rc::new(right)) }
             | mult_expr     => { | (left, right) | Expression::Mult(Rc::new(left), Rc::new(right)) }
-            | if_expr       => { | (test, if_ex, else_ex) | Expression::If{test: Box::new(test), if_expr: Box::new(if_ex), else_expr: if else_ex.as_ref().is_none() {None} else {Some(Box::new(else_ex.unwrap()))}} }
+            | if_expr       => { | (test, if_ex, else_ex) | Expression::If{
+                test: Box::new(test),
+                if_expr: Box::new(if_ex),
+                else_expr: { match else_ex {
+                    None => None,
+                    Some(ex) => Some(Box::new(ex))
+                }}}}
         )
     )
 );
@@ -180,4 +186,9 @@ fn main() {
     assert_eq!(expression(b"(- (+ 1 2))"), IResult::Done(&b""[..], Expression::Uminus(Rc::new(Expression::Plus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))))));
     assert_eq!(expression(b"(- 1 2)"), IResult::Done(&b""[..], Expression::Bminus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
     assert_eq!(expression(b"(* 1 2)"), IResult::Done(&b""[..], Expression::Mult(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
+    assert_eq!(expression(b"(if (+ 1 2) 3 4)"), IResult::Done(&b""[..], Expression::If{
+        test: Box::new(Expression::Plus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))),
+        if_expr: Box::new(Expression::Num(3)),
+        else_expr: Some(Box::new(Expression::Num(4)))
+    }));
 }
