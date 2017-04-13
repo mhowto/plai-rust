@@ -65,7 +65,6 @@ use nom::{digit, IResult};
 
 use std::str;
 use std::str::FromStr;
-use std::rc::Rc;
 
 #[derive(Debug,PartialEq)]
  pub enum Expression {
@@ -73,10 +72,10 @@ use std::rc::Rc;
      True,
      False,
      Num(i32),
-     Plus(Rc<Expression>, Rc<Expression>),
-     Uminus(Rc<Expression>),
-     Bminus(Rc<Expression>, Rc<Expression>),
-     Mult(Rc<Expression>, Rc<Expression>),
+     Plus(Box<Expression>, Box<Expression>),
+     Uminus(Box<Expression>),
+     Bminus(Box<Expression>, Box<Expression>),
+     Mult(Box<Expression>, Box<Expression>),
      If{test: Box<Expression>, if_expr: Box<Expression>, else_expr: Option<Box<Expression> >}
  }
 
@@ -165,10 +164,10 @@ named!(expression<Expression>,
             | true_expr     => { |_| Expression::True }
             | false_expr    => { |_| Expression::False }
             | num_expr      => { |num| Expression::Num(num) }
-            | uminus_expr   => { |val| Expression::Uminus(Rc::new(val)) }
-            | bminus_expr   => { | (left, right) | Expression::Bminus(Rc::new(left), Rc::new(right)) }
-            | plus_expr     => { | (left, right) | Expression::Plus(Rc::new(left), Rc::new(right)) }
-            | mult_expr     => { | (left, right) | Expression::Mult(Rc::new(left), Rc::new(right)) }
+            | uminus_expr   => { |val| Expression::Uminus(Box::new(val)) }
+            | bminus_expr   => { | (left, right) | Expression::Bminus(Box::new(left), Box::new(right)) }
+            | plus_expr     => { | (left, right) | Expression::Plus(Box::new(left), Box::new(right)) }
+            | mult_expr     => { | (left, right) | Expression::Mult(Box::new(left), Box::new(right)) }
             | if_expr       => { | (test, if_ex, else_ex) | Expression::If{
                 test: Box::new(test),
                 if_expr: Box::new(if_ex),
@@ -181,13 +180,13 @@ named!(expression<Expression>,
 );
 
 fn main() {
-    assert_eq!(expression(b"(+ 1 2)"), IResult::Done(&b""[..], Expression::Plus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
-    assert_eq!(expression(b"(- 1)"), IResult::Done(&b""[..], Expression::Uminus(Rc::new(Expression::Num(1)))));
-    assert_eq!(expression(b"(- (+ 1 2))"), IResult::Done(&b""[..], Expression::Uminus(Rc::new(Expression::Plus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))))));
-    assert_eq!(expression(b"(- 1 2)"), IResult::Done(&b""[..], Expression::Bminus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
-    assert_eq!(expression(b"(* 1 2)"), IResult::Done(&b""[..], Expression::Mult(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))));
+    assert_eq!(expression(b"(+ 1 2)"), IResult::Done(&b""[..], Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))));
+    assert_eq!(expression(b"(- 1)"), IResult::Done(&b""[..], Expression::Uminus(Box::new(Expression::Num(1)))));
+    assert_eq!(expression(b"(- (+ 1 2))"), IResult::Done(&b""[..], Expression::Uminus(Box::new(Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))))));
+    assert_eq!(expression(b"(- 1 2)"), IResult::Done(&b""[..], Expression::Bminus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))));
+    assert_eq!(expression(b"(* 1 2)"), IResult::Done(&b""[..], Expression::Mult(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))));
     assert_eq!(expression(b"(if (+ 1 2) 3 4)"), IResult::Done(&b""[..], Expression::If{
-        test: Box::new(Expression::Plus(Rc::new(Expression::Num(1)), Rc::new(Expression::Num(2)))),
+        test: Box::new(Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))),
         if_expr: Box::new(Expression::Num(3)),
         else_expr: Some(Box::new(Expression::Num(4)))
     }));
