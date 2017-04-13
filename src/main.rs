@@ -77,7 +77,7 @@ use std::rc::Rc;
      Uminus(Rc<Expression>),
      Bminus(Rc<Expression>, Rc<Expression>),
      Mult(Rc<Expression>, Rc<Expression>),
-     If(test: Rc<Expression>, if_expr: Rc<Expression>, else_expr: Rc<Expression>)
+     If{test: Box<Expression>, if_expr: Box<Expression>, else_expr: Option<Box<Expression> >}
  }
 
 named!(nil_expr, tag!("nil"));
@@ -151,10 +151,10 @@ named!(if_expr<(Expression, Expression, Option<Expression>)>,
         tag!("(") >>
         tag!("if") >>
         test: expression >>
-        if_expr: expression >>
-        else_expr: opt!(expression) >>
+        if_ex: expression >>
+        else_ex: opt!(expression) >>
         tag!(")") >>
-        (test, if_expr, else_expr)
+        (test, if_ex, else_ex)
     )
 );
 
@@ -169,6 +169,7 @@ named!(expression<Expression>,
             | bminus_expr   => { | (left, right) | Expression::Bminus(Rc::new(left), Rc::new(right)) }
             | plus_expr     => { | (left, right) | Expression::Plus(Rc::new(left), Rc::new(right)) }
             | mult_expr     => { | (left, right) | Expression::Mult(Rc::new(left), Rc::new(right)) }
+            | if_expr       => { | (test, if_ex, else_ex) | Expression::If{test: Box::new(test), if_expr: Box::new(if_ex), else_expr: if else_ex.as_ref().is_none() {None} else {Some(Box::new(else_ex.unwrap()))}} }
         )
     )
 );
