@@ -61,10 +61,11 @@
 #[macro_use]
 extern crate nom;
 
-use nom::{digit, IResult};
+use nom::{alpha, digit, IResult};
 
 use std::str;
 use std::str::FromStr;
+use std::string::String;
 
 #[derive(Debug,PartialEq)]
  pub enum Expression {
@@ -76,10 +77,26 @@ use std::str::FromStr;
      Uminus(Box<Expression>),
      Bminus(Box<Expression>, Box<Expression>),
      Mult(Box<Expression>, Box<Expression>),
-     If{test: Box<Expression>, if_expr: Box<Expression>, else_expr: Option<Box<Expression> >}
- }
+     If{test: Box<Expression>, expr_if: Box<Expression>, else_expr: Option<Box<Expression> >},
+     Lambda{arg: String, body: Box<Expression>},
+    //  Box_(Box<Expression>),
+    //  Unbox_(Box<Expression>),
+    //  Setbox_(Box<Expression>, Box<Expression>),
+    //  Seq(Box<Expression>, Box<Expression>),
+}
 
-named!(nil_expr, tag!("nil"));
+named!(expr_nil, tag!("nil"));
+
+named!(expr_lambda<(String, Expression)>, do_parse!(
+    arg: map_res!(
+        map_res!(
+            ws!(alpha),
+            str::from_utf8),
+        FromStr::from_str
+    ) >>
+    body: expression >>
+    (arg, body)
+));
 
 named!(unsigned_int<i32>, map_res!( // map_res! maps a function returning a Result on the Output of a parser
     map_res!(
@@ -99,10 +116,10 @@ named!(num_expr<i32>, map!( // map! maps a function on the result of a parser
     }
 ));
 
-named!(true_expr, tag!("true"));
-named!(false_expr, tag!("false"));
+named!(expr_true, tag!("true"));
+named!(expr_false, tag!("false"));
 
-named!(uminus_expr<Expression>,
+named!(expr_uminus<Expression>,
     do_parse!(
         tag!("(") >>
         tag!("-") >>
@@ -112,7 +129,7 @@ named!(uminus_expr<Expression>,
     )
 );
 
-named!(plus_expr<(Expression, Expression)>, 
+named!(expr_plus<(Expression, Expression)>, 
      do_parse!(
         tag!("(") >>
         tag!("+") >>
@@ -123,7 +140,7 @@ named!(plus_expr<(Expression, Expression)>,
     )
 );
 
-named!(bminus_expr<(Expression, Expression)>,
+named!(expr_bminus<(Expression, Expression)>,
     do_parse!(
         tag!("(") >>
         tag!("-") >>
@@ -134,7 +151,7 @@ named!(bminus_expr<(Expression, Expression)>,
     )
 );
 
-named!(mult_expr<(Expression, Expression)>,
+named!(expr_mult<(Expression, Expression)>,
     do_parse!(
         tag!("(") >>
         tag!("*") >>
@@ -145,7 +162,7 @@ named!(mult_expr<(Expression, Expression)>,
     )
 );
 
-named!(if_expr<(Expression, Expression, Option<Expression>)>,
+named!(expr_if<(Expression, Expression, Option<Expression>)>,
     do_parse!(
         tag!("(") >>
         tag!("if") >>
@@ -160,21 +177,25 @@ named!(if_expr<(Expression, Expression, Option<Expression>)>,
 named!(expression<Expression>,
     ws!( // ws! transforms a parser to automatically consume whitespace between each token.
         alt!(  // alt! try a list of parsers, return the result of the first successful one
-            nil_expr        => { |_| Expression::Nil }
-            | true_expr     => { |_| Expression::True }
-            | false_expr    => { |_| Expression::False }
+            expr_nil        => { |_| Expression::Nil }
+            | expr_true     => { |_| Expression::True }
+            | expr_false    => { |_| Expression::False }
             | num_expr      => { |num| Expression::Num(num) }
-            | uminus_expr   => { |val| Expression::Uminus(Box::new(val)) }
-            | bminus_expr   => { | (left, right) | Expression::Bminus(Box::new(left), Box::new(right)) }
-            | plus_expr     => { | (left, right) | Expression::Plus(Box::new(left), Box::new(right)) }
-            | mult_expr     => { | (left, right) | Expression::Mult(Box::new(left), Box::new(right)) }
-            | if_expr       => { | (test, if_ex, else_ex) | Expression::If{
+            | expr_uminus   => { |val| Expression::Uminus(Box::new(val)) }
+            | expr_bminus   => { | (left, right) | Expression::Bminus(Box::new(left), Box::new(right)) }
+            | expr_plus     => { | (left, right) | Expression::Plus(Box::new(left), Box::new(right)) }
+            | expr_mult     => { | (left, right) | Expression::Mult(Box::new(left), Box::new(right)) }
+            | expr_if       => { | (test, if_ex, else_ex) | Expression::If{
                 test: Box::new(test),
-                if_expr: Box::new(if_ex),
+                expr_if: Box::new(if_ex),
                 else_expr: { match else_ex {
                     None => None,
                     Some(ex) => Some(Box::new(ex))
                 }}}}
+            | expr_lambda   => { | (arg, body) | Expression::Lambda{
+                arg: arg,
+                body: Box::new(body)
+                }}
         )
     )
 );
@@ -187,7 +208,7 @@ fn main() {
     assert_eq!(expression(b"(* 1 2)"), IResult::Done(&b""[..], Expression::Mult(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))));
     assert_eq!(expression(b"(if (+ 1 2) 3 4)"), IResult::Done(&b""[..], Expression::If{
         test: Box::new(Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))),
-        if_expr: Box::new(Expression::Num(3)),
+        expr_if: Box::new(Expression::Num(3)),
         else_expr: Some(Box::new(Expression::Num(4)))
     }));
 }
