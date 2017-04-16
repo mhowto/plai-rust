@@ -1,5 +1,5 @@
 [package]
-name = "plai-rust"
+name = "plai_rust"
 version = "0.1.0"
 authors = ["mhowto"]
 
