@@ -84,6 +84,7 @@ pub enum Expression {
         expr_if: Box<Expression>,
         else_expr: Option<Box<Expression>>,
     },
+    ID(String), 
     Lambda { arg: String, body: Box<Expression> }, /*  Box_(Box<Expression>),
                                                     *  Unbox_(Box<Expression>),
                                                     *  Setbox_(Box<Expression>, Box<Expression>),
@@ -91,17 +92,6 @@ pub enum Expression {
 }
 
 named!(expr_nil, tag!("nil"));
-
-named!(expr_lambda<(String, Expression)>, do_parse!(
-    arg: map_res!(
-        map_res!(
-            ws!(alpha),
-            str::from_utf8),
-        FromStr::from_str
-    ) >>
-    body: expression >>
-    (arg, body)
-));
 
 named!(unsigned_int<i32>, map_res!( // map_res! maps a function returning a Result on the Output of a parser
     map_res!(
@@ -179,6 +169,30 @@ named!(expr_if<(Expression, Expression, Option<Expression>)>,
     )
 );
 
+named!(expr_id<String>, do_parse!(
+    s: map_res!(
+        map_res!(
+            ws!(alpha),
+            str::from_utf8),
+        FromStr::from_str
+    ) >>
+    (s)
+));
+
+named!(expr_lambda<(String, Expression)>, do_parse!(
+    tag!("(") >>
+    tag!("lambda") >>
+    arg: map_res!(
+        map_res!(
+            ws!(alpha),
+            str::from_utf8),
+        FromStr::from_str
+    ) >>
+    body: expression >>
+    tag!(")") >>
+    (arg, body)
+));
+
 named!(expression<Expression>,
     ws!( // ws! transforms a parser to automatically consume whitespace between each token.
         alt!(  // alt! try a list of parsers, return the result of the first successful one
@@ -197,6 +211,7 @@ named!(expression<Expression>,
                     None => None,
                     Some(ex) => Some(Box::new(ex))
                 }}}}
+            | expr_id       => { |s| Expression::ID(s)}
             | expr_lambda   => { | (arg, body) | Expression::Lambda{
                 arg: arg,
                 body: Box::new(body)
@@ -236,9 +251,29 @@ mod tests {
     #[test]
     fn parse_if() {
         assert_eq!(expression(b"(if (+ 1 2) 3 4)"), IResult::Done(&b""[..], Expression::If{
-        test: Box::new(Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))),
-        expr_if: Box::new(Expression::Num(3)),
-        else_expr: Some(Box::new(Expression::Num(4)))
-    }));
+            test: Box::new(Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))),
+            expr_if: Box::new(Expression::Num(3)),
+            else_expr: Some(Box::new(Expression::Num(4)))
+        }));
+    }
+
+/*
+    #[test]
+    fn parse_id() {
+        assert_eq!(expression(b"(id x)"), IResult::Done(&b""[..], Expression::ID(String::from("x"))));
+    }
+*/
+
+    #[test]
+    fn parse_lambda() {
+        assert_eq!(expression(b"(lambda x (+ x 1))"),
+            IResult::Done(&b""[..],
+                Expression::Lambda{
+                    arg: String::from("x"),
+                    body: Box::new(
+                        Expression::Plus(
+                            Box::new(Expression::ID(String::from("x"))),
+                            Box::new(Expression::Num(1))))
+                }));
     }
 }
