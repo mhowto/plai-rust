@@ -89,8 +89,8 @@ pub enum Expression {
     Box_(Box<Expression>),
     Unbox_(Box<Expression>),
     Setbox_(Box<Expression>, Box<Expression>),
-    /*
-                                                    *  Seq(Box<Expression>, Box<Expression>), */
+    Seq(Box<Expression>, Box<Expression>),
+    Let {what_: String, to_: Box<Expression>, in_: Box<Expression>}
 }
 
 named!(expr_nil, tag!("nil"));
@@ -102,6 +102,12 @@ named!(unsigned_int<i32>, map_res!( // map_res! maps a function returning a Resu
     ),
     FromStr::from_str
 ));
+
+named!(expr_symbol<String>, map_res!(
+    map_res!(
+        ws!(alpha),
+        str::from_utf8),
+    FromStr::from_str)); 
 
 named!(num_expr<i32>, map!( // map! maps a function on the result of a parser
     pair!(
@@ -220,6 +226,25 @@ named!(expr_setbox<(Expression, Expression)>, do_parse!(
     (b, v)
 ));
 
+named!(expr_seq<(Expression, Expression)>, do_parse!(
+    tag!("(") >>
+    tag!("seq") >>
+    b1: expression >>
+    b2: expression >>
+    tag!(")") >>
+    (b1, b2)
+));
+
+named!(expr_let<(String, Expression, Expression)>, do_parse!(
+    tag!("(") >>
+    tag!("let") >>
+    what_: expr_symbol >>
+    to_: expression >>
+    in_: expression >>
+    tag!(")") >>
+    (what_, to_, in_)
+));
+
 named!(expression<Expression>,
     ws!( // ws! transforms a parser to automatically consume whitespace between each token.
         alt!(  // alt! try a list of parsers, return the result of the first successful one
@@ -246,6 +271,11 @@ named!(expression<Expression>,
             | expr_box      => { |arg| Expression::Box_(Box::new(arg))}
             | expr_unbox    => { |arg| Expression::Unbox_(Box::new(arg))}
             | expr_setbox   => { |(b, v)| Expression::Setbox_(Box::new(b), Box::new(v))}
+            | expr_seq      => { |(b1, b2)| Expression::Seq(Box::new(b1), Box::new(b2))}
+            | expr_let      => { |(what_, to_, in_)| Expression::Let{
+                what_: what_,
+                to_: Box::new(to_), 
+                in_: Box::new(in_)} }
         )
     )
 );
@@ -335,6 +365,33 @@ mod tests {
                     Box::new(Expression::Box_(Box::new(Expression::Num(3)))),
                     Box::new(Expression::Num(4))
                 )
+            )
+        );
+    }
+
+    #[test]
+    fn parse_seq() {
+        assert_eq!(expression(b"(seq 2 3)"),
+            IResult::Done(&b""[..],
+                Expression::Seq(
+                    Box::new(Expression::Num(2)),
+                    Box::new(Expression::Num(3))
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn parse_Let() {
+        assert_eq!(expression(b"(let a 4 (* 3 a))"),
+            IResult::Done(&b""[..],
+                Expression::Let{
+                    what_: String::from("a"),
+                    to_: Box::new(Expression::Num(4)),
+                    in_: Box::new(Expression::Mult(
+                                    Box::new(Expression::Num(3)),
+                                    Box::new(Expression::ID(String::from("a")))))
+                }
             )
         );
     }
