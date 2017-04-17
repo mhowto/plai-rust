@@ -85,9 +85,11 @@ pub enum Expression {
         else_expr: Option<Box<Expression>>,
     },
     ID(String), 
-    Lambda { arg: String, body: Box<Expression> }, /*  Box_(Box<Expression>),
-                                                    *  Unbox_(Box<Expression>),
-                                                    *  Setbox_(Box<Expression>, Box<Expression>),
+    Lambda { arg: String, body: Box<Expression> },
+    Box_(Box<Expression>),
+    Unbox_(Box<Expression>),
+    Setbox_(Box<Expression>, Box<Expression>),
+    /*
                                                     *  Seq(Box<Expression>, Box<Expression>), */
 }
 
@@ -193,6 +195,31 @@ named!(expr_lambda<(String, Expression)>, do_parse!(
     (arg, body)
 ));
 
+named!(expr_box<Expression>, do_parse!(
+    tag!("(") >>
+    tag!("box") >>
+    arg: expression >>
+    tag!(")") >>
+    (arg)
+));
+
+named!(expr_unbox<Expression>, do_parse!(
+    tag!("(") >>
+    tag!("unbox") >>
+    arg: expression >>
+    tag!(")") >>
+    (arg)
+));
+
+named!(expr_setbox<(Expression, Expression)>, do_parse!(
+    tag!("(") >>
+    tag!("setbox") >>
+    b: expression >>
+    v: expression >>
+    tag!(")") >>
+    (b, v)
+));
+
 named!(expression<Expression>,
     ws!( // ws! transforms a parser to automatically consume whitespace between each token.
         alt!(  // alt! try a list of parsers, return the result of the first successful one
@@ -216,6 +243,9 @@ named!(expression<Expression>,
                 arg: arg,
                 body: Box::new(body)
                 }}
+            | expr_box      => { |arg| Expression::Box_(Box::new(arg))}
+            | expr_unbox    => { |arg| Expression::Unbox_(Box::new(arg))}
+            | expr_setbox   => { |(b, v)| Expression::Setbox_(Box::new(b), Box::new(v))}
         )
     )
 );
@@ -275,5 +305,37 @@ mod tests {
                             Box::new(Expression::ID(String::from("x"))),
                             Box::new(Expression::Num(1))))
                 }));
+    }
+
+    #[test]
+    fn parse_box() {
+        assert_eq!(expression(b"(box 3)"),
+            IResult::Done(&b""[..],
+                Expression::Box_(Box::new(Expression::Num(3)))
+            )
+        );
+    }
+
+    #[test]
+    fn parse_unbox() {
+        assert_eq!(expression(b"(unbox (box 3))"),
+            IResult::Done(&b""[..],
+                Expression::Unbox_(Box::new(
+                    Expression::Box_(Box::new(Expression::Num(3)))
+                ))
+            )
+        );
+    }
+
+    #[test]
+    fn parse_setbox() {
+        assert_eq!(expression(b"(setbox (box 3) 4)"),
+            IResult::Done(&b""[..],
+                Expression::Setbox_(
+                    Box::new(Expression::Box_(Box::new(Expression::Num(3)))),
+                    Box::new(Expression::Num(4))
+                )
+            )
+        );
     }
 }
