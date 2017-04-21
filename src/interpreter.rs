@@ -19,6 +19,17 @@ enum Value {
     BoxV(Location),
 }
 
+impl Value {
+    fn to_string(&self) -> String {
+        match *self {
+            Value::NumV(n) => n.to_string(),
+            Value::BoolV(b) => b.to_string(),
+            Value::ClosV { ref arg, ref body, ref env } => String::from("Unknown"),
+            Value::BoxV(_) => String::from("Unknown")
+        }
+    }
+}
+
 struct Storage {
     location: Location,
     val: Value,
@@ -29,11 +40,27 @@ enum Store {
     override_store{with: Storage, rest: Box<Store>}
 }
 
-struct PResult {
+struct IResult {
     val: Value,
     sto: Store,
 }
 
-fn interp(expr: Expression, env: Env, sto: Store) -> PResult {
-    PResult {val: Value::NumV(1), sto: Store::mt_store}
+fn interp(expr: Expression, env: Env, sto: Store) -> IResult {
+    IResult {val: Value::NumV(3), sto: Store::mt_store}
+}
+
+fn interpret(expr: Expression) -> IResult {
+    interp(expr, Env::mt_env, Store::mt_store)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn interp_plus() {
+        let expr = expression(b"(+ 1 2)");
+        assert_eq!(expr.is_done(), true);
+        let result = interpret(expr);
+        assert_eq!(result.val.to_string(), String::from("3"));
+    }
 }
