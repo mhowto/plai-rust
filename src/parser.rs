@@ -58,7 +58,7 @@
 //      | (seq <sequence>)
 //
 
-use nom::{alpha, digit, IResult};
+use nom::{alpha, digit};
 
 use std::str;
 use std::str::FromStr;
@@ -240,7 +240,7 @@ named!(expr_let<(String, Expression, Expression)>, do_parse!(
     (what_, to_, in_)
 ));
 
-named!(expression<Expression>,
+named!(pub expression<Expression>,
     ws!( // ws! transforms a parser to automatically consume whitespace between each token.
         alt!(  // alt! try a list of parsers, return the result of the first successful one
             expr_nil        => { |_| Expression::Nil }
@@ -277,7 +277,8 @@ named!(expression<Expression>,
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{expression, Expression};
+    use nom::IResult;
     #[test]
     fn parse_plus() {
         assert_eq!(expression(b"(+ 1 2)"), IResult::Done(&b""[..], Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))));

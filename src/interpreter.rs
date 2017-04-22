@@ -55,12 +55,21 @@ fn interpret(expr: Expression) -> IResult {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use parser::expression;
+    use super::interpret;
+    use nom::IResult;
+
     #[test]
     fn interp_plus() {
-        let expr = expression(b"(+ 1 2)");
-        assert_eq!(expr.is_done(), true);
-        let result = interpret(expr);
-        assert_eq!(result.val.to_string(), String::from("3"));
+        if let IResult::Done(_, expr) = expression(b"(+ 1 2)") {
+            let result = interpret(expr);
+            assert_eq!(result.val.to_string(), String::from("3"));
+        } else {
+            assert!(false);
+        }
+        // let expr = expression(b"(+ 1 2)");
+        // assert_eq!(expr.is_done(), true);
+        // let result = interpret(expr.unwrap());
+        // assert_eq!(result.val.to_string(), String::from("3"));
     }
 }
