@@ -3,5 +3,6 @@ extern crate nom;
 
 #[allow(dead_code)]
 
-mod parser;
-mod interpreter;
+pub mod ty;
+pub mod parser;
+pub mod interpreter;
