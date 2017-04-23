@@ -67,7 +67,7 @@ use ty::Expression;
 
 named!(expr_nil, tag!("nil"));
 
-named!(unsigned_int<i32>, map_res!( // map_res! maps a function returning a Result on the Output of a parser
+named!(unsigned_int<isize>, map_res!( // map_res! maps a function returning a Result on the Output of a parser
     map_res!(
         ws!(digit),
         str::from_utf8
@@ -81,13 +81,13 @@ named!(expr_symbol<String>, map_res!(
         str::from_utf8),
     FromStr::from_str)); 
 
-named!(num_expr<i32>, map!( // map! maps a function on the result of a parser
+named!(num_expr<isize>, map!( // map! maps a function on the result of a parser
     pair!(
         opt!(alt!(tag!("+") | tag!("-"))),
         unsigned_int
     ),
-    | (sign, value): (Option<&[u8]>, i32) | {
-        sign.and_then( |s| if s[0] == ('-' as u8) { Some(-1i32) } else {None}).unwrap_or(1i32) *value
+    | (sign, value): (Option<&[u8]>, isize) | {
+        sign.and_then( |s| if s[0] == ('-' as u8) { Some(-1isize) } else {None}).unwrap_or(1isize) *value
     }
 ));
 

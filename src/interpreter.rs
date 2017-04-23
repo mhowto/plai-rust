@@ -13,6 +13,7 @@ pub enum Env {
 }
 
 pub enum Value {
+    NilV,
     NumV(isize),
     BoolV(bool),
     ClosV{arg: String, body: Expression, env: Env},
@@ -22,9 +23,10 @@ pub enum Value {
 impl Value {
     pub fn to_string(&self) -> String {
         match *self {
+            Value::NilV => String::from("Nil"),
             Value::NumV(n) => n.to_string(),
             Value::BoolV(b) => b.to_string(),
-            Value::ClosV { ref arg, ref body, ref env } => String::from("Unknown"),
+            Value::ClosV{ ref arg, ref body, ref env } => String::from("Unknown"),
             Value::BoxV(_) => String::from("Unknown")
         }
     }
@@ -45,10 +47,16 @@ pub struct IResult {
     pub sto: Store,
 }
 
-fn interp(expr: Expression, env: Env, sto: Store) -> IResult {
-    IResult {val: Value::NumV(3), sto: Store::mt_store}
+fn interp(expr: &Expression, env: &mut Env, sto: &mut Store) -> Value {
+    match *expr {
+        Expression::Nil     => Value::NilV,
+        Expression::True    => Value::BoolV(true),
+        Expression::False   => Value::BoolV(false),
+        Expression::Num(n)  => Value::NumV(n),
+        _                   => Value::NilV,
+    }
 }
 
-pub fn interpret(expr: Expression) -> IResult {
-    interp(expr, Env::mt_env, Store::mt_store)
+pub fn interpret(expr: &Expression) -> Value {
+    interp(expr, &mut Env::mt_env, &mut Store::mt_store)
 }

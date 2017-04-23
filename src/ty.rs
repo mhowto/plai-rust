@@ -3,7 +3,7 @@ pub enum Expression {
     Nil,
     True,
     False,
-    Num(i32),
+    Num(isize),
     Plus(Box<Expression>, Box<Expression>),
     Uminus(Box<Expression>),
     Bminus(Box<Expression>, Box<Expression>),

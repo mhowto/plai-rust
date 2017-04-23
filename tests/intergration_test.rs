@@ -3,7 +3,7 @@ extern crate nom;
 
 use plai_rust::parser::expression;
 use plai_rust::ty::Expression;
-use plai_rust::interpreter::interpret;
+use plai_rust::interpreter::{interpret, Value};
 
 use nom::IResult;
 
@@ -15,8 +15,9 @@ fn test_plus() {
     if let IResult::Done(_, expr) = expression(plus_raw_string) {
         assert_eq!(expr, plus_expr);
 
-        let result = interpret(expr);
-        assert_eq!(result.val.to_string(), String::from("3"));
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(3));
+        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
