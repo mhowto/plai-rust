@@ -50,13 +50,26 @@ pub struct IResult {
     pub sto: Store,
 }
 
-fn num_op(left: &Value, right: &Value) -> Option<Value> {
+fn num_op<F: Fn(isize, isize) -> isize>(op: F, left: &Value, right: &Value) -> Value {
     match (left, right) {
-        (&Value::NumV(l), &Value::NumV(r)) => Option::Some(Value::NumV(l + r)),
-        _ => Option::None
+        (&Value::NumV(l), &Value::NumV(r)) => Value::NumV(op(l, r)),
+        _ => panic!("type error")
     }
-
 }
+
+/*
+fn num_plus(left: &Value, right: &Value) -> Option<Value> {
+    num_op(|x, y| x+y, left, right)
+}
+
+fn num_minus(left: &Value, right: &Value) -> Option<Value> {
+    num_op(|x, y| x-y, left, right)
+}
+
+fn num_mult(left: &Value, right: &Value) -> Option<Value> {
+    num_op(|x, y| x*y, left, right)
+}
+*/
 
 fn interp(expr: &Expression, env: &mut Env, sto: &mut Store) -> Value {
     match expr {
@@ -64,16 +77,45 @@ fn interp(expr: &Expression, env: &mut Env, sto: &mut Store) -> Value {
         &Expression::True    => Value::BoolV(true),
         &Expression::False   => Value::BoolV(false),
         &Expression::Num(n)  => Value::NumV(n),
-        &Expression::Plus(ref left, ref right) =>  {
+        &Expression::Uminus(ref v) => {
+            let r = interp(v.as_ref(), env, sto);
+            match r {
+                Value::NumV(val) => Value::NumV(-val),
+                _ => panic!("type error: num expected")
+            }
+        },
+        &Expression::Plus(ref left, ref right) => {
             let r1 = interp(left.as_ref(), env, sto);
             let r2 = interp(right.as_ref(), env, sto);
-            if let Option::Some(v) = num_op(&r1, &r2) {
-                v
+            num_op(|x, y| x+y, &r1, &r2)
+        },
+        &Expression::Bminus(ref left, ref right) => {
+            let r1 = interp(left.as_ref(), env, sto);
+            let r2 = interp(right.as_ref(), env, sto);
+            num_op(|x, y| x-y, &r1, &r2)
+        },
+        &Expression::Mult(ref left, ref right) => {
+            let r1 = interp(left.as_ref(), env, sto);
+            let r2 = interp(right.as_ref(), env, sto);
+            num_op(|x, y| x*y, &r1, &r2)
+        },
+        &Expression::True => {
+            Value::BoolV(true)
+        },
+        &Expression::False => {
+            Value::BoolV(false)
+        },
+        &Expression::If{ref test, ref expr_if, ref else_expr} => {
+            let test_value = interp(test.as_ref(), env, sto);
+            if test_value == Value::BoolV(true) {
+                interp(expr_if.as_ref(), env, sto)
+            } else if let &Option::Some(ref else_expr1) = else_expr {
+                interp(else_expr1, env, sto)
             } else {
-                panic!("type error");
+                panic!("type error: expected else expression");
             }
-        }
-        _                   => Value::NilV,
+        },
+        _ => Value::NilV,
     }
 }
 

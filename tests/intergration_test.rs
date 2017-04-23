@@ -31,8 +31,9 @@ fn test_uminus() {
     if let IResult::Done(_, expr) = expression(minus_raw_string) {
         assert_eq!(expr, minus_expr);
         
-        // let result = interpret(expr);
-        // assert_eq!(result.val.to_string(), String::from);
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(-1));
+        assert_eq!(result.to_string(), String::from("-1"));
     } else {
         assert!(false);
     }
@@ -45,6 +46,10 @@ fn test_uminus2() {
 
     if let IResult::Done(_, expr) = expression(uminus_raw_string) {
         assert_eq!(expr, uminus_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(-3));
+        assert_eq!(result.to_string(), String::from("-3"));
     } else {
         assert!(false);
     }
@@ -57,6 +62,10 @@ fn test_bminus() {
 
     if let IResult::Done(_, expr) = expression(bminus_raw_string) {
         assert_eq!(expr, bminus_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(-1));
+        assert_eq!(result.to_string(), String::from("-1"));
     } else {
         assert!(false);
     }
@@ -69,22 +78,78 @@ fn test_mult() {
 
     if let IResult::Done(_, expr) = expression(mult_raw_string) {
         assert_eq!(expr, mult_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(2));
+        assert_eq!(result.to_string(), String::from("2"));
     } else {
         assert!(false);
     }
 }
 
 #[test]
-fn test_if() {
-    let if_raw_string = b"(if (+ 1 2) 3 4)";
+fn test_bool() {
+    let true_raw_string = b"true";
+    let true_expr = Expression::True;
+    let false_raw_string = b"false";
+    let false_expr = Expression::False;
+
+    if let IResult::Done(_, expr) = expression(true_raw_string) {
+        assert_eq!(expr, true_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::BoolV(true));
+        assert_eq!(result.to_string(), String::from("true"));
+    } else {
+        assert!(false);
+    }
+
+    if let IResult::Done(_, expr) = expression(false_raw_string) {
+        assert_eq!(expr, false_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::BoolV(false));
+        assert_eq!(result.to_string(), String::from("false"));
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_if_true() {
+    let if_raw_string = b"(if true 3 4)";
     let if_expr = Expression::If{
-        test: Box::new(Expression::Plus(Box::new(Expression::Num(1)), Box::new(Expression::Num(2)))),
+        test: Box::new(Expression::True),
         expr_if: Box::new(Expression::Num(3)),
         else_expr: Some(Box::new(Expression::Num(4)))
     };
 
     if let IResult::Done(_, expr) = expression(if_raw_string) {
         assert_eq!(expr, if_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(3));
+        assert_eq!(result.to_string(), String::from("3"));
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_if_false() {
+    let if_raw_string = b"(if false 3 4)";
+    let if_expr = Expression::If{
+        test: Box::new(Expression::False),
+        expr_if: Box::new(Expression::Num(3)),
+        else_expr: Some(Box::new(Expression::Num(4)))
+    };
+
+    if let IResult::Done(_, expr) = expression(if_raw_string) {
+        assert_eq!(expr, if_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(4));
+        assert_eq!(result.to_string(), String::from("4"));
     } else {
         assert!(false);
     }
