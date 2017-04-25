@@ -241,3 +241,21 @@ fn test_let() {
         assert!(false);
     }
 }
+
+/*
+(+ (let ([b (box 0)])
+     1)
+   b)
+
+should error
+*/
+
+/*
+(let ([a (box 1)])
+  (let ([f (lambda (x) (+ x (unbox a)))])
+    (begin
+      (set-box! a 2)
+      (f 10))))
+
+12
+*/

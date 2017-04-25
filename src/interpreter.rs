@@ -1,17 +1,21 @@
 use ty::Expression;
+use std::collections::HashMap;
 
 type Location = u64;
 
 #[derive(Debug,PartialEq)]
 pub struct Binding {
     name: String,
-    val: Location,
+    loc: Location,
 }
 
 #[derive(Debug,PartialEq)]
 pub enum Env {
     mt_env,
-    extend_env{with: Binding, rest: Box<Env>}
+
+    // 为什么用Box，不用&Env
+    // 因为Env对rest有所有权，用&Env只是借用，并没有所有权
+    extend_env{with: Binding, rest: Box<Env>} 
 }
 
 #[derive(Debug,PartialEq)]
@@ -19,7 +23,7 @@ pub enum Value {
     NilV,
     NumV(isize),
     BoolV(bool),
-    ClosV{arg: String, body: Expression, env: Env},
+    // ClosV{arg: String, body: Expression, env: Env},
     BoxV(Location),
 }
 
@@ -29,9 +33,22 @@ impl Value {
             Value::NilV => String::from("Nil"),
             Value::NumV(n) => n.to_string(),
             Value::BoolV(b) => b.to_string(),
-            Value::ClosV{ ref arg, ref body, ref env } => String::from("Unknown"),
+            // Value::ClosV{ref arg, ref body, ref env} => String::from("Unknown"),
             Value::BoxV(_) => String::from("Unknown")
         }
+    }
+}
+
+impl Clone for Value {
+    fn clone(&self) -> Value {
+        match *self {
+            Value::NilV => Value::NilV,
+            Value::NumV(n) => Value::NumV(n),
+            Value::BoolV(b) => Value::BoolV(b),
+            Value::BoxV(a) => Value::BoxV(a),
+            // Value::ClosV{ref arg, ref body, ref env} => Value::ClosV
+        }
+
     }
 }
 
@@ -40,9 +57,11 @@ pub struct Storage {
     val: Value,
 }
 
+//type Store = HashMap<Location, &mut Value>;
+
 pub enum Store {
     mt_store,
-    override_store{with: Storage, rest: Box<Store>}
+    override_store{cell: Storage, rest: Box<Store>}
 }
 
 pub struct IResult {
@@ -71,7 +90,31 @@ fn num_mult(left: &Value, right: &Value) -> Option<Value> {
 }
 */
 
-fn interp(expr: &Expression, env: &mut Env, sto: &mut Store) -> Value {
+fn lookup(what: &String, in_env: &Env) -> Location {
+    match in_env {
+        &Env::mt_env => panic!("lookup: unbound identifier"),
+        &Env::extend_env{ref with, ref rest} => 
+            if what.eq(&with.name) {
+                with.loc
+            } else {
+                lookup(what, rest.as_ref())
+            }
+    }
+}
+
+fn fetch(what: Location, in_store: &Store) -> Value {
+    match in_store {
+        &Store::mt_store => panic!("fetch: location not found"),
+        &Store::override_store{ref cell, ref rest} =>
+            if cell.location == what {
+                cell.val.clone()
+            } else {
+                fetch(what, rest.as_ref())
+            }
+    }
+}
+
+fn interp(expr: &Expression, env: &Env, sto: &mut Store) -> Value {
     match expr {
         &Expression::Nil     => Value::NilV,
         &Expression::True    => Value::BoolV(true),
@@ -115,6 +158,7 @@ fn interp(expr: &Expression, env: &mut Env, sto: &mut Store) -> Value {
                 panic!("type error: expected else expression");
             }
         },
+        &Expression::ID(ref id) => fetch(lookup(id, env), sto),
         _ => Value::NilV,
     }
 }
