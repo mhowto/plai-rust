@@ -52,22 +52,28 @@ impl Clone for Value {
     }
 }
 
+/*
 pub struct Storage {
     location: Location,
     val: Value,
 }
+*/
 
-//type Store = HashMap<Location, &mut Value>;
+pub type Store = HashMap<Location, Value>;
 
+/*
 pub enum Store {
     mt_store,
     override_store{cell: Storage, rest: Box<Store>}
 }
+*/
 
+/*
 pub struct IResult {
     pub val: Value,
     pub sto: Store,
 }
+*/
 
 fn num_op<F: Fn(isize, isize) -> isize>(op: F, left: &Value, right: &Value) -> Value {
     match (left, right) {
@@ -102,15 +108,10 @@ fn lookup(what: &String, in_env: &Env) -> Location {
     }
 }
 
-fn fetch(what: Location, in_store: &Store) -> Value {
-    match in_store {
-        &Store::mt_store => panic!("fetch: location not found"),
-        &Store::override_store{ref cell, ref rest} =>
-            if cell.location == what {
-                cell.val.clone()
-            } else {
-                fetch(what, rest.as_ref())
-            }
+fn fetch(what: Location, sto: &Store) -> Value {
+    match sto.get(&what) {
+        Some(val) => val.clone(),
+        None => panic!("fetch not found")
     }
 }
 
@@ -164,5 +165,7 @@ fn interp(expr: &Expression, env: &Env, sto: &mut Store) -> Value {
 }
 
 pub fn interpret(expr: &Expression) -> Value {
-    interp(expr, &mut Env::mt_env, &mut Store::mt_store)
+    let mut store = Store::new();
+    // interp(expr, &mut Env::mt_env, &mut Store::mt_store)
+    interp(expr, &mut Env::mt_env, &mut store)
 }
