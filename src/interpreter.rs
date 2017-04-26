@@ -3,13 +3,13 @@ use std::collections::HashMap;
 
 type Location = u64;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub struct Binding {
     name: String,
     loc: Location,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Env {
     mt_env,
 
@@ -18,12 +18,12 @@ pub enum Env {
     extend_env{with: Binding, rest: Box<Env>} 
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Value {
     NilV,
     NumV(isize),
     BoolV(bool),
-    // ClosV{arg: String, body: Expression, env: Env},
+    ClosV{arg: String, body: Expression, env: Env},
     BoxV(Location),
 }
 
@@ -33,12 +33,13 @@ impl Value {
             Value::NilV => String::from("Nil"),
             Value::NumV(n) => n.to_string(),
             Value::BoolV(b) => b.to_string(),
-            // Value::ClosV{ref arg, ref body, ref env} => String::from("Unknown"),
+            Value::ClosV{ref arg, ref body, ref env} => String::from("ClosV"),
             Value::BoxV(_) => String::from("Unknown")
         }
     }
 }
 
+/*
 impl Clone for Value {
     fn clone(&self) -> Value {
         match *self {
@@ -46,11 +47,11 @@ impl Clone for Value {
             Value::NumV(n) => Value::NumV(n),
             Value::BoolV(b) => Value::BoolV(b),
             Value::BoxV(a) => Value::BoxV(a),
-            // Value::ClosV{ref arg, ref body, ref env} => Value::ClosV
+            Value::ClosV{ref arg, ref body, ref env} => Value::ClosV
         }
-
     }
 }
+*/
 
 /*
 pub struct Storage {
@@ -160,6 +161,11 @@ fn interp(expr: &Expression, env: &Env, sto: &mut Store) -> Value {
             }
         },
         &Expression::ID(ref id) => fetch(lookup(id, env), sto),
+        &Expression::Lambda{ref arg, ref body} => Value::ClosV{
+            arg: arg.clone(),
+            body: body.as_ref().clone(),
+            env: env.clone(),
+            },
         _ => Value::NilV,
     }
 }

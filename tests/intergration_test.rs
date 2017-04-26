@@ -3,7 +3,7 @@ extern crate nom;
 
 use plai_rust::parser::expression;
 use plai_rust::ty::Expression;
-use plai_rust::interpreter::{interpret, Value};
+use plai_rust::interpreter::{interpret, Value, Env};
 
 use nom::IResult;
 
@@ -168,6 +168,13 @@ fn test_lambda() {
 
     if let IResult::Done(_, expr) = expression(lambda_raw_string) {
         assert_eq!(expr, lambda_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::ClosV{
+            arg: String::from("x"),
+            body: Expression::Plus(Box::new(Expression::ID(String::from("x"))), Box::new(Expression::Num(1))),
+            env: Env::mt_env});
+        assert_eq!(result.to_string(), String::from("ClosV"));
     } else {
         assert!(false);
     }
