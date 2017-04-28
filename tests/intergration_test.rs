@@ -227,6 +227,10 @@ fn test_unbox() {
 
     if let IResult::Done(_, expr) = expression(unbox_raw_string) {
         assert_eq!(expr, unbox_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(3));
+        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
@@ -241,6 +245,9 @@ fn test_setbox() {
 
     if let IResult::Done(_, expr) = expression(setbox_raw_string) {
         assert_eq!(expr, setbox_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NilV);
     } else {
         assert!(false);
     }

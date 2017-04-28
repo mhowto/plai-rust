@@ -166,6 +166,22 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
             sto.insert(nloc, val.clone());
             Value::BoxV(nloc)
         },
+        &Expression::Unbox_(ref body) => {
+            if let Value::BoxV(loc) = interp(new_loc, body.as_ref(), env, sto) {
+                fetch(loc, sto)
+            } else {
+                panic!("interpretation of Unbox's body must be a Box");
+            }
+        },
+        &Expression::Setbox_(ref _box, ref _val) => {
+            if let Value::BoxV(loc) = interp(new_loc, _box.as_ref(), env, sto) {
+                let val = interp(new_loc, _val, env, sto);
+                sto.insert(loc, val);
+                Value::NilV
+            } else {
+                panic!("interpretation of Setbox's box must be a Box");
+            }
+        },
         _ => Value::NilV,
     }
 }
