@@ -173,6 +173,15 @@ named!(expr_lambda<(String, Expression)>, do_parse!(
     (arg, body)
 ));
 
+named!(expr_app<(Expression, Expression)>, do_parse!(
+    tag!("(") >>
+    tag!("app") >>
+    func: expression >>
+    arg: expression >>
+    tag!(")") >>
+    (func, arg)
+));
+
 named!(expr_box<Expression>, do_parse!(
     tag!("(") >>
     tag!("box") >>
@@ -240,6 +249,9 @@ named!(pub expression<Expression>,
                 arg: arg,
                 body: Box::new(body)
                 }}
+            | expr_app      => { |(func, arg)| Expression::App{
+                func: Box::new(func),
+                arg: Box::new(arg)} }
             | expr_box      => { |arg| Expression::Box_(Box::new(arg))}
             | expr_unbox    => { |arg| Expression::Unbox_(Box::new(arg))}
             | expr_setbox   => { |(b, v)| Expression::Setbox_(Box::new(b), Box::new(v))}

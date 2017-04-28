@@ -173,8 +173,32 @@ fn test_lambda() {
         assert_eq!(result, Value::ClosV{
             arg: String::from("x"),
             body: Expression::Plus(Box::new(Expression::ID(String::from("x"))), Box::new(Expression::Num(1))),
-            env: Env::mt_env});
+            env: Env::MtEnv});
         assert_eq!(result.to_string(), String::from("ClosV"));
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_app() {
+    let app_raw_string = b"(app (lambda x (+ x 1)) 2)";
+    let app_expr = Expression::App{
+        func: Box::new(Expression::Lambda{
+            arg: String::from("x"),
+            body: Box::new(Expression::Plus(
+                Box::new(Expression::ID(String::from("x"))),
+                Box::new(Expression::Num(1))))
+        }),
+        arg: Box::new(Expression::Num(2))
+    };
+
+    if let IResult::Done(_, expr) = expression(app_raw_string) {
+        assert_eq!(expr, app_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(3));
+        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }

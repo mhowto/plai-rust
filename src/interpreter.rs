@@ -3,6 +3,17 @@ use std::collections::HashMap;
 
 type Location = u64;
 
+fn counter() -> Box<FnMut() -> u64> {
+    let mut c = 0;
+    Box::new(move || {
+        c += 1;
+        c
+    })
+}
+
+// static mut new_loc: Box<FnMut() -> isize> = counter();
+
+
 #[derive(Debug,PartialEq,Clone)]
 pub struct Binding {
     name: String,
@@ -11,11 +22,11 @@ pub struct Binding {
 
 #[derive(Debug,PartialEq,Clone)]
 pub enum Env {
-    mt_env,
+    MtEnv,
 
     // 为什么用Box，不用&Env
     // 因为Env对rest有所有权，用&Env只是借用，并没有所有权
-    extend_env{with: Binding, rest: Box<Env>} 
+    ExtendEnv{with: Binding, rest: Box<Env>} 
 }
 
 #[derive(Debug,PartialEq,Clone)]
@@ -33,7 +44,7 @@ impl Value {
             Value::NilV => String::from("Nil"),
             Value::NumV(n) => n.to_string(),
             Value::BoolV(b) => b.to_string(),
-            Value::ClosV{ref arg, ref body, ref env} => String::from("ClosV"),
+            Value::ClosV{arg: _, body: _, env: _} => String::from("ClosV"),
             Value::BoxV(_) => String::from("Unknown")
         }
     }
@@ -99,8 +110,8 @@ fn num_mult(left: &Value, right: &Value) -> Option<Value> {
 
 fn lookup(what: &String, in_env: &Env) -> Location {
     match in_env {
-        &Env::mt_env => panic!("lookup: unbound identifier"),
-        &Env::extend_env{ref with, ref rest} => 
+        &Env::MtEnv => panic!("lookup: unbound identifier"),
+        &Env::ExtendEnv{ref with, ref rest} => 
             if what.eq(&with.name) {
                 with.loc
             } else {
@@ -116,46 +127,40 @@ fn fetch(what: Location, sto: &Store) -> Value {
     }
 }
 
-fn interp(expr: &Expression, env: &Env, sto: &mut Store) -> Value {
+fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: &mut Store) -> Value {
     match expr {
         &Expression::Nil     => Value::NilV,
         &Expression::True    => Value::BoolV(true),
         &Expression::False   => Value::BoolV(false),
         &Expression::Num(n)  => Value::NumV(n),
         &Expression::Uminus(ref v) => {
-            let r = interp(v.as_ref(), env, sto);
+            let r = interp(new_loc, v.as_ref(), env, sto);
             match r {
                 Value::NumV(val) => Value::NumV(-val),
                 _ => panic!("type error: num expected")
             }
         },
         &Expression::Plus(ref left, ref right) => {
-            let r1 = interp(left.as_ref(), env, sto);
-            let r2 = interp(right.as_ref(), env, sto);
+            let r1 = interp(new_loc, left.as_ref(), env, sto);
+            let r2 = interp(new_loc, right.as_ref(), env, sto);
             num_op(|x, y| x+y, &r1, &r2)
         },
         &Expression::Bminus(ref left, ref right) => {
-            let r1 = interp(left.as_ref(), env, sto);
-            let r2 = interp(right.as_ref(), env, sto);
+            let r1 = interp(new_loc, left.as_ref(), env, sto);
+            let r2 = interp(new_loc, right.as_ref(), env, sto);
             num_op(|x, y| x-y, &r1, &r2)
         },
         &Expression::Mult(ref left, ref right) => {
-            let r1 = interp(left.as_ref(), env, sto);
-            let r2 = interp(right.as_ref(), env, sto);
+            let r1 = interp(new_loc, left.as_ref(), env, sto);
+            let r2 = interp(new_loc, right.as_ref(), env, sto);
             num_op(|x, y| x*y, &r1, &r2)
         },
-        &Expression::True => {
-            Value::BoolV(true)
-        },
-        &Expression::False => {
-            Value::BoolV(false)
-        },
         &Expression::If{ref test, ref expr_if, ref else_expr} => {
-            let test_value = interp(test.as_ref(), env, sto);
+            let test_value = interp(new_loc, test.as_ref(), env, sto);
             if test_value == Value::BoolV(true) {
-                interp(expr_if.as_ref(), env, sto)
+                interp(new_loc, expr_if.as_ref(), env, sto)
             } else if let &Option::Some(ref else_expr1) = else_expr {
-                interp(else_expr1, env, sto)
+                interp(new_loc, else_expr1, env, sto)
             } else {
                 panic!("type error: expected else expression");
             }
@@ -166,12 +171,30 @@ fn interp(expr: &Expression, env: &Env, sto: &mut Store) -> Value {
             body: body.as_ref().clone(),
             env: env.clone(),
             },
+        &Expression::App{ref func, ref arg} =>  {
+            if let Value::ClosV{arg: ref clos_arg, body: ref clos_body, env: ref clos_env} = interp(new_loc, func,  env, sto) {
+                let arg_val =interp(new_loc, arg, env, sto);
+                let nloc = new_loc();
+                sto.insert(nloc, arg_val);
+                interp(
+                    new_loc,
+                    clos_body,
+                    &Env::ExtendEnv{
+                        with: Binding{name: clos_arg.clone(), loc: nloc},
+                        rest: Box::new(clos_env.clone())
+                        },
+                    sto)
+            } else {
+                panic!("interpretation of lambda must be closure");
+            }
+        },
         _ => Value::NilV,
     }
 }
 
 pub fn interpret(expr: &Expression) -> Value {
     let mut store = Store::new();
-    // interp(expr, &mut Env::mt_env, &mut Store::mt_store)
-    interp(expr, &mut Env::mt_env, &mut store)
+    let mut new_loc = counter();
+    // interp(expr, &mut Env::MtEnv, &mut Store::mt_store)
+    interp(&mut new_loc, expr, &mut Env::MtEnv, &mut store)
 }

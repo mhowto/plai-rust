@@ -15,6 +15,7 @@ pub enum Expression {
     },
     ID(String), 
     Lambda { arg: String, body: Box<Expression> },
+    App {func: Box<Expression>, arg: Box<Expression>},
     Box_(Box<Expression>),
     Unbox_(Box<Expression>),
     Setbox_(Box<Expression>, Box<Expression>),
