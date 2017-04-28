@@ -82,7 +82,7 @@ fn num_op<F: Fn(isize, isize) -> isize>(op: F, left: &Value, right: &Value) -> V
 
 fn lookup(what: &String, in_env: &Env) -> Location {
     match in_env {
-        &Env::MtEnv => panic!("lookup: unbound identifier"),
+        &Env::MtEnv => panic!(format!("lookup: unbound identifier '{}'", what)),
         &Env::ExtendEnv{ref with, ref rest} => 
             if what.eq(&with.name) {
                 with.loc
@@ -182,7 +182,20 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
                 panic!("interpretation of Setbox's box must be a Box");
             }
         },
-        _ => Value::NilV,
+        &Expression::Seq(ref s1, ref s2) => {
+            interp(new_loc, s1.as_ref(), env, sto);
+            interp(new_loc, s2.as_ref(), env, sto)
+        },
+        &Expression::Let{ref what_, ref to_, ref in_} => {
+            let val = interp(new_loc, to_.as_ref(), env, sto);
+            let nloc = new_loc();
+            sto.insert(nloc, val);
+            let nenv = Env::ExtendEnv{
+                with: Binding{name: what_.clone(), loc: nloc},
+                rest: Box::new(env.clone())
+            };
+            interp(new_loc, in_.as_ref(), &nenv, sto)
+        }
     }
 }
 

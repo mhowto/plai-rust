@@ -262,6 +262,10 @@ fn test_seq() {
 
     if let IResult::Done(_, expr) = expression(seq_raw_string) {
         assert_eq!(expr, seq_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(3));
+        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
@@ -279,25 +283,45 @@ fn test_let() {
 
     if let IResult::Done(_, expr) = expression(let_raw_string) {
         assert_eq!(expr, let_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(12));
+        assert_eq!(result.to_string(), String::from("12"));
     } else {
         assert!(false);
     }
 }
 
-/*
-(+ (let ([b (box 0)])
-     1)
-   b)
+#[test]
+#[should_panic(expected = "lookup: unbound identifier 'b'")]
+fn test_lexical_scope_1() {
+    let raw_string = b"(+ (let b
+                               (box 0)
+                               1)
+                           b))";
+    if let IResult::Done(_, expr) = expression(raw_string) {
+        interpret(&expr);
+    } else {
+        assert!(false);
+    }
+}
 
-should error
-*/
+#[test]
+fn test_lexical_scope_2() {
+    let raw_string = b"
+    (let a
+         (box 1)
+         (let f
+              (lambda x
+                      (+ x
+                         (unbox a)))
+              (seq (setbox a 2)
+                   (app f 10))))";
 
-/*
-(let ([a (box 1)])
-  (let ([f (lambda (x) (+ x (unbox a)))])
-    (begin
-      (set-box! a 2)
-      (f 10))))
-
-12
-*/
+    if let IResult::Done(_, expr) = expression(raw_string) {
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(12));
+    } else {
+        assert!(false);
+    }
+}
