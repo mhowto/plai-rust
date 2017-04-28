@@ -211,6 +211,10 @@ fn test_box() {
 
     if let IResult::Done(_, expr) = expression(box_raw_string) {
         assert_eq!(expr, box_expr);
+
+        let result = interpret(&expr);
+        assert_eq!(result, Value::BoxV(1));
+        assert_eq!(result.to_string(), String::from("Box{ Location: 1 }"));
     } else {
         assert!(false);
     }

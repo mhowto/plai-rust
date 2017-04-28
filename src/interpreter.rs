@@ -45,24 +45,10 @@ impl Value {
             Value::NumV(n) => n.to_string(),
             Value::BoolV(b) => b.to_string(),
             Value::ClosV{arg: _, body: _, env: _} => String::from("ClosV"),
-            Value::BoxV(_) => String::from("Unknown")
+            Value::BoxV(loc) => format!("Box{{ Location: {} }}", loc)
         }
     }
 }
-
-/*
-impl Clone for Value {
-    fn clone(&self) -> Value {
-        match *self {
-            Value::NilV => Value::NilV,
-            Value::NumV(n) => Value::NumV(n),
-            Value::BoolV(b) => Value::BoolV(b),
-            Value::BoxV(a) => Value::BoxV(a),
-            Value::ClosV{ref arg, ref body, ref env} => Value::ClosV
-        }
-    }
-}
-*/
 
 /*
 pub struct Storage {
@@ -93,20 +79,6 @@ fn num_op<F: Fn(isize, isize) -> isize>(op: F, left: &Value, right: &Value) -> V
         _ => panic!("type error")
     }
 }
-
-/*
-fn num_plus(left: &Value, right: &Value) -> Option<Value> {
-    num_op(|x, y| x+y, left, right)
-}
-
-fn num_minus(left: &Value, right: &Value) -> Option<Value> {
-    num_op(|x, y| x-y, left, right)
-}
-
-fn num_mult(left: &Value, right: &Value) -> Option<Value> {
-    num_op(|x, y| x*y, left, right)
-}
-*/
 
 fn lookup(what: &String, in_env: &Env) -> Location {
     match in_env {
@@ -188,6 +160,12 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
                 panic!("interpretation of lambda must be closure");
             }
         },
+        &Expression::Box_(ref _box) => {
+            let val = interp(new_loc, _box.as_ref(), env, sto);
+            let nloc = new_loc();
+            sto.insert(nloc, val.clone());
+            Value::BoxV(nloc)
+        },
         _ => Value::NilV,
     }
 }
@@ -195,6 +173,5 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
 pub fn interpret(expr: &Expression) -> Value {
     let mut store = Store::new();
     let mut new_loc = counter();
-    // interp(expr, &mut Env::MtEnv, &mut Store::mt_store)
     interp(&mut new_loc, expr, &mut Env::MtEnv, &mut store)
 }
