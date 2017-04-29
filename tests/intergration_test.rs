@@ -325,3 +325,65 @@ fn test_lexical_scope_2() {
         assert!(false);
     }
 }
+
+#[test]
+#[should_panic(expected = "lookup: unbound identifier 'fact'")]
+fn test_recursive_function_panic() {
+    let raw_string = b"
+    (let fact
+         (lambda n
+                 (if (= n 0)
+                     1
+                     (* n
+                        (app fact (- n 1))
+                     )
+                 )
+         )
+         (app fact 10)
+    )";
+
+    if let IResult::Done(_, expr) = expression(raw_string) {
+        interpret(&expr);
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_recursive_function_fact() {
+    let raw_string = b"
+    (let fact 
+         (box 3)
+         (seq (setbox fact
+                      (lambda n
+                              (if (= n 0)
+                                  1
+                                  (* n (app fact (- n 1)))
+                              )
+                      )
+              )
+              (app fact 10)))";
+
+    if let IResult::Done(_, expr) = expression(raw_string) {
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(3628800))
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_cyclic_data() {
+    let raw_string = b"
+    (let b
+         (box 3)
+         (seq (setbox b b)
+              (unbox (unbox b))))";
+    
+    if let IResult::Done(_, expr) = expression(raw_string) {
+        let result = interpret(&expr);
+        assert_eq!(result, Value::BoxV(1));
+    } else {
+        assert!(false);
+    }
+}

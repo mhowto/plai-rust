@@ -137,6 +137,17 @@ named!(expr_mult<(Expression, Expression)>,
     )
 );
 
+named!(expr_equal<(Expression, Expression)>,
+    do_parse!(
+        tag!("(") >>
+        tag!("=") >>
+        left: expression >>
+        right: expression >>
+        tag!(")") >>
+        (left, right)
+    )
+);
+
 named!(expr_if<(Expression, Expression, Option<Expression>)>,
     do_parse!(
         tag!("(") >>
@@ -237,6 +248,7 @@ named!(pub expression<Expression>,
             | expr_bminus   => { | (left, right) | Expression::Bminus(Box::new(left), Box::new(right)) }
             | expr_plus     => { | (left, right) | Expression::Plus(Box::new(left), Box::new(right)) }
             | expr_mult     => { | (left, right) | Expression::Mult(Box::new(left), Box::new(right)) }
+            | expr_equal    => { | (left, right) | Expression::Equal(Box::new(left), Box::new(right)) }
             | expr_if       => { | (test, if_ex, else_ex) | Expression::If{
                 test: Box::new(test),
                 expr_if: Box::new(if_ex),

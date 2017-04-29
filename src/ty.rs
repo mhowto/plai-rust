@@ -8,6 +8,7 @@ pub enum Expression {
     Uminus(Box<Expression>),
     Bminus(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
+    Equal(Box<Expression>, Box<Expression>),
     If {
         test: Box<Expression>,
         expr_if: Box<Expression>,

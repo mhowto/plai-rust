@@ -127,6 +127,15 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
             let r2 = interp(new_loc, right.as_ref(), env, sto);
             num_op(|x, y| x*y, &r1, &r2)
         },
+        &Expression::Equal(ref left, ref right) => {
+            let r1 = interp(new_loc, left.as_ref(), env, sto);
+            let r2 = interp(new_loc, right.as_ref(), env, sto);
+            if r1 == r2 {
+                Value::BoolV(true)
+            } else {
+                Value::BoolV(false)
+            }
+        },
         &Expression::If{ref test, ref expr_if, ref else_expr} => {
             let test_value = interp(new_loc, test.as_ref(), env, sto);
             if test_value == Value::BoolV(true) {
@@ -143,21 +152,26 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
             body: body.as_ref().clone(),
             env: env.clone(),
             },
-        &Expression::App{ref func, ref arg} =>  {
-            if let Value::ClosV{arg: ref clos_arg, body: ref clos_body, env: ref clos_env} = interp(new_loc, func,  env, sto) {
-                let arg_val =interp(new_loc, arg, env, sto);
+        &Expression::App{ref func, ref arg} => {
+            let mut val = interp(new_loc, func, env, sto);
+            if let Value::BoxV(loc) = val {
+                val = fetch(loc, sto);
+            }
+
+            if let Value::ClosV { arg: ref clos_arg, body: ref clos_body, env: ref clos_env } = val {
+                let arg_val = interp(new_loc, arg, env, sto);
                 let nloc = new_loc();
                 sto.insert(nloc, arg_val);
                 interp(
                     new_loc,
                     clos_body,
-                    &Env::ExtendEnv{
-                        with: Binding{name: clos_arg.clone(), loc: nloc},
+                    &Env::ExtendEnv {
+                        with: Binding { name: clos_arg.clone(), loc: nloc },
                         rest: Box::new(clos_env.clone())
-                        },
+                    },
                     sto)
             } else {
-                panic!("interpretation of lambda must be closure");
+                panic!("interpretation of lambda must be closure")
             }
         },
         &Expression::Box_(ref _box) => {
