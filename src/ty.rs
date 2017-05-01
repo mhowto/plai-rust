@@ -21,5 +21,8 @@ pub enum Expression {
     Unbox_(Box<Expression>),
     Setbox_(Box<Expression>, Box<Expression>),
     Seq(Box<Expression>, Box<Expression>),
-    Let {what_: String, to_: Box<Expression>, in_: Box<Expression>}
+    Let {what_: String, to_: Box<Expression>, in_: Box<Expression>},
+    List(Vec<Expression>),
+    Object{ns: Vec<String>, vs: Box<Expression>},
+    Msg{obj: Box<Expression>, method: String},
 }

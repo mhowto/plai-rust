@@ -1,11 +1,11 @@
 extern crate plai_rust;
 extern crate nom;
 
-use plai_rust::parser::expression;
+use plai_rust::parser::{expression, expr_list_id, expr_object};
 use plai_rust::ty::Expression;
 use plai_rust::interpreter::{interpret, Value, Env};
 
-use nom::IResult;
+use nom::{IResult, ErrorKind};
 
 #[test]
 fn test_plus() {
@@ -17,7 +17,6 @@ fn test_plus() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(3));
-        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
@@ -33,7 +32,6 @@ fn test_uminus() {
         
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(-1));
-        assert_eq!(result.to_string(), String::from("-1"));
     } else {
         assert!(false);
     }
@@ -49,7 +47,6 @@ fn test_uminus2() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(-3));
-        assert_eq!(result.to_string(), String::from("-3"));
     } else {
         assert!(false);
     }
@@ -65,7 +62,6 @@ fn test_bminus() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(-1));
-        assert_eq!(result.to_string(), String::from("-1"));
     } else {
         assert!(false);
     }
@@ -81,7 +77,6 @@ fn test_mult() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(2));
-        assert_eq!(result.to_string(), String::from("2"));
     } else {
         assert!(false);
     }
@@ -99,7 +94,6 @@ fn test_bool() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::BoolV(true));
-        assert_eq!(result.to_string(), String::from("true"));
     } else {
         assert!(false);
     }
@@ -109,7 +103,6 @@ fn test_bool() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::BoolV(false));
-        assert_eq!(result.to_string(), String::from("false"));
     } else {
         assert!(false);
     }
@@ -129,7 +122,6 @@ fn test_if_true() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(3));
-        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
@@ -149,7 +141,6 @@ fn test_if_false() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(4));
-        assert_eq!(result.to_string(), String::from("4"));
     } else {
         assert!(false);
     }
@@ -174,7 +165,6 @@ fn test_lambda() {
             arg: String::from("x"),
             body: Expression::Plus(Box::new(Expression::ID(String::from("x"))), Box::new(Expression::Num(1))),
             env: Env::MtEnv});
-        assert_eq!(result.to_string(), String::from("ClosV"));
     } else {
         assert!(false);
     }
@@ -198,7 +188,6 @@ fn test_app() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(3));
-        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
@@ -214,7 +203,6 @@ fn test_box() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::BoxV(1));
-        assert_eq!(result.to_string(), String::from("Box{ Location: 1 }"));
     } else {
         assert!(false);
     }
@@ -230,7 +218,6 @@ fn test_unbox() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(3));
-        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
@@ -265,7 +252,6 @@ fn test_seq() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(3));
-        assert_eq!(result.to_string(), String::from("3"));
     } else {
         assert!(false);
     }
@@ -286,7 +272,6 @@ fn test_let() {
 
         let result = interpret(&expr);
         assert_eq!(result, Value::NumV(12));
-        assert_eq!(result.to_string(), String::from("12"));
     } else {
         assert!(false);
     }
@@ -383,6 +368,88 @@ fn test_cyclic_data() {
     if let IResult::Done(_, expr) = expression(raw_string) {
         let result = interpret(&expr);
         assert_eq!(result, Value::BoxV(1));
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_list() {
+    let raw_string = b"(list 1 2)";
+
+    if let IResult::Done(_, expr) = expression(raw_string) {
+        let result = interpret(&expr);
+        assert_eq!(result, Value::ListV([Value::NumV(1), Value::NumV(2)].to_vec()));
+
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_list_id() {
+    let raw_string = b"(list add1 sub1 mult1)";
+    /*
+    let result_expr = Expression::List([
+        Expression::ID(String::from("add1")), 
+        Expression::ID(String::from("b")),
+        Expression::ID(String::from("c"))]
+        .to_vec());
+        */
+
+    if let IResult::Done(_, expr) = expr_list_id(raw_string) {
+        assert_eq!(expr.len(), 3);
+        assert_eq!(expr[0], String::from("add1"));
+        assert_eq!(expr[1], String::from("sub1"));
+        assert_eq!(expr[2], String::from("mult1"));
+
+        // let result = interpret(&expr);
+        // assert_eq!(result, Value::ListV([Value:: Value::ID("a"), Value::ID("b"), Value::ID("c")].to_vec()));
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_list_lambda() {
+    let raw_string = b"
+           (list (lambda x (+ x 1))
+                 (lambda x (+ x -1)))";
+
+    if let IResult::Done(_, expr) = expression(raw_string) {
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_object_parse() {
+    let raw_string = b"(obj (list add1 sub1) (list (lambda x (+ x 1)) (lambda x (+ x -1))))";
+
+    let res = expr_object(raw_string);
+    let err = res.unwrap_err();
+    println!("err: {:?}", err);
+    // assert_eq!(res, IResult::Error(ErrorKind::Alt));
+//    assert_eq!(expr_object(raw_string), IResult::Done(&b""[..], Expression::Nil));
+    if let IResult::Done(_, expr) = expression(raw_string) {
+    } else {
+        assert!(false);
+    }
+}
+
+#[test]
+fn test_object() {
+    let raw_string = b"
+    (let o
+         (obj (list add1 sub1)
+              (list (lambda x (+ x 1))
+                    (lambda x (+ x -1))))
+         (msg o add1 3))";
+
+    assert_eq!(expression(raw_string), IResult::Done(&b""[..], Expression::Nil));
+    if let IResult::Done(_, expr) = expression(raw_string) {
+        let result = interpret(&expr);
+        assert_eq!(result, Value::NumV(4));
     } else {
         assert!(false);
     }

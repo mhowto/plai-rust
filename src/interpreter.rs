@@ -36,8 +36,11 @@ pub enum Value {
     BoolV(bool),
     ClosV{arg: String, body: Expression, env: Env},
     BoxV(Location),
+    ListV(Vec<Value>),
+    ObjV{ns: Vec<String>, vs: Vec<Value>},
 }
 
+/*
 impl Value {
     pub fn to_string(&self) -> String {
         match *self {
@@ -45,10 +48,12 @@ impl Value {
             Value::NumV(n) => n.to_string(),
             Value::BoolV(b) => b.to_string(),
             Value::ClosV{arg: _, body: _, env: _} => String::from("ClosV"),
-            Value::BoxV(loc) => format!("Box{{ Location: {} }}", loc)
+            Value::BoxV(loc) => format!("Box{{ Location: {} }}", loc),
+            Value::ListV(ref vec) => format!("List"),
         }
     }
 }
+*/
 
 /*
 pub struct Storage {
@@ -97,6 +102,21 @@ fn fetch(what: Location, sto: &Store) -> Value {
         Some(val) => val.clone(),
         None => panic!("fetch not found")
     }
+}
+
+// lookup_msg: symbol * Value -> Value
+// where the second argument is expected to be a objV
+fn lookup_msg(method: String, obj: Value) -> Value {
+    if let Value::ObjV{ref ns, ref vs}  =  obj {
+        for x in 0..ns.len() {
+            if method == ns[x] {
+                return vs[x].clone()
+            }
+        }
+    } else {
+        panic!("The second argument must be a objV");
+    }
+    panic!("lookup_msg: method not found");
 }
 
 fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: &mut Store) -> Value {
@@ -209,7 +229,24 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
                 rest: Box::new(env.clone())
             };
             interp(new_loc, in_.as_ref(), &nenv, sto)
-        }
+        },
+        &Expression::List(ref list) => {
+            let mut vec = Vec::new();
+            for x in list {
+                vec.push(interp(new_loc, x, env, sto));
+            }
+            Value::ListV(vec)
+        },
+        &Expression::Object{ref ns, ref vs} => {
+            if let Value::ListV(vec) = interp(new_loc, vs, env, sto) {
+                Value::ObjV{ns: ns.clone(), vs: vec}
+            } else {
+                panic!("interpretation of vs in object must be ListV");
+            }
+        },
+        &Expression::Msg{ref obj, ref method} => lookup_msg(
+            method.clone(),
+            interp(new_loc, obj, env, sto)),
     }
 }
 

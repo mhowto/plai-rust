@@ -58,7 +58,7 @@
 //      | (seq <sequence>)
 //
 
-use nom::{alpha, digit};
+use nom::{alphanumeric, digit};
 
 use std::str;
 use std::str::FromStr;
@@ -77,7 +77,8 @@ named!(unsigned_int<isize>, map_res!( // map_res! maps a function returning a Re
 
 named!(expr_symbol<String>, map_res!(
     map_res!(
-        ws!(alpha),
+        ws!(alphanumeric),
+        // ws!(alpha),
         str::from_utf8),
     FromStr::from_str)); 
 
@@ -161,24 +162,49 @@ named!(expr_if<(Expression, Expression, Option<Expression>)>,
 );
 
 named!(expr_id<String>, do_parse!(
-    s: map_res!(
-        map_res!(
-            ws!(alpha),
-            str::from_utf8),
-        FromStr::from_str
-    ) >>
-    (s)
+    id: expr_symbol >>
+    (id)
+));
+
+named!(expr_list<Vec<Expression> >, do_parse!(
+    tag!("(") >>
+    tag!("list") >>
+    elements: many1!(expression) >>
+    tag!(")") >>
+    (elements)
+));
+
+named!(pub expr_list_id<Vec<String> >, do_parse!(
+    tag!("(") >>
+    tag!("list") >>
+    ids: many1!(expr_symbol) >>
+    tag!(")") >>
+    (ids)
+));
+
+named!(pub expr_object<(Vec<String>, Vec<Expression>)>, do_parse!(
+    tag!("(") >>
+    tag!("obj") >>
+    ns: expr_list_id >>
+    vs: expr_list >>
+    tag!(")") >>
+    (ns, vs)
+));
+
+named!(expr_msg<(Expression, String, Expression)>, do_parse!(
+    tag!("(") >>
+    tag!("msg") >>
+    object_id: expression >>
+    method_name: expr_symbol >>
+    argument: expression >>
+    tag!(")") >>
+    (object_id, method_name, argument)
 ));
 
 named!(expr_lambda<(String, Expression)>, do_parse!(
     tag!("(") >>
     tag!("lambda") >>
-    arg: map_res!(
-        map_res!(
-            ws!(alpha),
-            str::from_utf8),
-        FromStr::from_str
-    ) >>
+    arg: expr_symbol >>
     body: expression >>
     tag!(")") >>
     (arg, body)
@@ -257,10 +283,15 @@ named!(pub expression<Expression>,
                     Some(ex) => Some(Box::new(ex))
                 }}}}
             | expr_id       => { |s| Expression::ID(s)}
-            | expr_lambda   => { | (arg, body) | Expression::Lambda{
+            | expr_list     => { |elements| Expression::List(elements) }
+            | expr_object   => { |(ns, vs)| Expression::Object{ns: ns, vs: Box::new(Expression::List(vs))} }
+            | expr_lambda   => { |(arg, body)| Expression::Lambda{
                 arg: arg,
                 body: Box::new(body)
                 }}
+            | expr_msg      => { |(object_id, method_name, argument)| Expression::App{
+                func: Box::new(Expression::Msg{obj: Box::new(object_id), method: method_name}),
+                arg: Box::new(argument)} }
             | expr_app      => { |(func, arg)| Expression::App{
                 func: Box::new(func),
                 arg: Box::new(arg)} }
