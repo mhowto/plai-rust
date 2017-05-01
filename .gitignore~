@@ -20,6 +20,4 @@ Cargo.lock
 !.vscode/launch.json
 !.vscode/extensions.json
 
-.idea/
-
 # End of https://www.gitignore.io/api/rust,visualstudiocode
