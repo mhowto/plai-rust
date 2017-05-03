@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 type Location = u64;
 
-fn counter() -> Box<FnMut() -> u64> {
+pub fn counter() -> Box<FnMut() -> u64> {
     let mut c = 0;
     Box::new(move || {
         c += 1;
@@ -254,4 +254,28 @@ pub fn interpret(expr: &Expression) -> Value {
     let mut store = Store::new();
     let mut new_loc = counter();
     interp(&mut new_loc, expr, &mut Env::MtEnv, &mut store)
+}
+
+use parser::expression;
+use nom::{IResult};
+
+pub fn execute(source_code: &[u8]) -> Value {
+    let mut rest = source_code;
+    let mut store = Store::new();
+    let mut new_loc = counter();
+
+    loop {
+        match expression(rest) {
+            IResult::Done(_rest, ref expr) => {
+                let val = interp(&mut new_loc, expr, &mut Env::MtEnv, &mut store);
+                if _rest.len() == 0 {
+                    return val;
+                } else {
+                    rest = _rest;
+                }
+            },
+            _ => {panic!("throws IResult::Error: parse panic");}
+        }
+    }
+    panic!("should not enter here");
 }

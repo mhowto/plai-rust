@@ -263,6 +263,20 @@ named!(expr_let<(String, Expression, Expression)>, do_parse!(
     (what_, to_, in_)
 ));
 
+named!(expr_define<(String, Expression)>, do_parse!(
+    tag!("(") >>
+    tag!("define") >> 
+    name: expr_symbol >>
+    val: expression >>
+    tag!(")") >>
+    (name, val)
+));
+
+/*
+named!(expr_defin_fn<(String, String, Expression)>, do_parse!(
+));
+*/
+
 named!(pub expression<Expression>,
     ws!( // ws! transforms a parser to automatically consume whitespace between each token.
         alt!(  // alt! try a list of parsers, return the result of the first successful one
@@ -303,6 +317,7 @@ named!(pub expression<Expression>,
                 what_: what_,
                 to_: Box::new(to_), 
                 in_: Box::new(in_)} }
+            | expr_define      => { |(name, val)| Expression::Define(name.clone(), Box::new(val)) }
         )
     )
 );

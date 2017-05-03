@@ -25,4 +25,5 @@ pub enum Expression {
     List(Vec<Expression>),
     Object{ns: Vec<String>, vs: Box<Expression>},
     Msg{obj: Box<Expression>, method: String},
+    Define(String, Box<Expression>)
 }

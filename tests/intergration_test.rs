@@ -3,7 +3,7 @@ extern crate nom;
 
 use plai_rust::parser::{expression, expr_list_id, expr_object};
 use plai_rust::ty::Expression;
-use plai_rust::interpreter::{interpret, Value, Env};
+use plai_rust::interpreter::{interpret, Value, Env, execute};
 
 use nom::{IResult, ErrorKind};
 
@@ -443,4 +443,24 @@ fn test_object() {
     } else {
         assert!(false);
     }
+}
+
+#[test]
+#[should_panic(expected = "throws IResult::Error: parse panic")]
+fn test_execute_parse_error() {
+    let raw_string = b"((+ 1 2)";
+    execute(raw_string);
+}
+
+#[test]
+fn test_execute_object() {
+    let raw_string = b"
+    (let o
+         (obj (list add1 sub1)
+              (list (lambda x (+ x 1))
+                    (lambda x (+ x -1))))
+         (msg o add1 3))";
+
+    let result = execute(raw_string);
+    assert_eq!(result, Value::NumV(4));
 }
