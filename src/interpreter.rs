@@ -119,7 +119,7 @@ fn lookup_msg(method: String, obj: Value) -> Value {
     panic!("lookup_msg: method not found");
 }
 
-fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: &mut Store) -> Value {
+fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &mut Env, sto: &mut Store) -> Value {
     match expr {
         &Expression::Nil     => Value::NilV,
         &Expression::True    => Value::BoolV(true),
@@ -185,7 +185,7 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
                 interp(
                     new_loc,
                     clos_body,
-                    &Env::ExtendEnv {
+                    &mut Env::ExtendEnv {
                         with: Binding { name: clos_arg.clone(), loc: nloc },
                         rest: Box::new(clos_env.clone())
                     },
@@ -224,11 +224,11 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
             let val = interp(new_loc, to_.as_ref(), env, sto);
             let nloc = new_loc();
             sto.insert(nloc, val);
-            let nenv = Env::ExtendEnv{
+            let mut nenv = Env::ExtendEnv{
                 with: Binding{name: what_.clone(), loc: nloc},
                 rest: Box::new(env.clone())
             };
-            interp(new_loc, in_.as_ref(), &nenv, sto)
+            interp(new_loc, in_.as_ref(), &mut nenv, sto)
         },
         &Expression::List(ref list) => {
             let mut vec = Vec::new();
@@ -247,6 +247,16 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &Env, sto: 
         &Expression::Msg{ref obj, ref method} => lookup_msg(
             method.clone(),
             interp(new_loc, obj, env, sto)),
+        &Expression::Define(ref name, ref val) => {
+            let new_val = interp(new_loc, val, env, sto);
+            let nloc = new_loc();
+            if let &mut Env::ExtendEnv{ref mut with, ref mut rest} = env {
+                *rest = Box::new(Env::ExtendEnv{with: *with, rest: *rest});
+                *with = Binding { name: name.clone(), loc: nloc };
+            }
+            sto.insert(nloc, new_val);
+            Value::NilV
+        },
     }
 }
 

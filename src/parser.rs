@@ -317,7 +317,7 @@ named!(pub expression<Expression>,
                 what_: what_,
                 to_: Box::new(to_), 
                 in_: Box::new(in_)} }
-            | expr_define      => { |(name, val)| Expression::Define(name.clone(), Box::new(val)) }
+            | expr_define      => { |(name, val)| Expression::Define(name, Box::new(val)) }
         )
     )
 );
