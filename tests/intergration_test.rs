@@ -476,3 +476,26 @@ fn test_execute_define_simple() {
     let result = execute(raw_string);
     assert_eq!(result, Value::NumV(4));
 }
+
+#[test]
+fn test_objects_as_named_collections() {
+    let raw_string_1 = b"
+    (define o1
+      (lambda m
+        (if (= m 0) (lambda x (+ x 1))
+                    (lambda x (- x 1)))))
+    (app (app o1 1) 5)";
+
+    let result_1 = execute(raw_string_1);
+    assert_eq!(result_1, Value::NumV(4));
+
+    let raw_string_2 = b"
+    (define o1
+      (lambda m
+        (if (= m 0) (lambda x (+ x 1))
+                    (lambda x (- x 1)))))
+    (app (app o1 0) 5)";
+
+    let result_2 = execute(raw_string_2);
+    assert_eq!(result_2, Value::NumV(6));
+}

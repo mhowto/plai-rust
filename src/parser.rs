@@ -210,14 +210,14 @@ named!(expr_lambda<(String, Expression)>, do_parse!(
     (arg, body)
 ));
 
-named!(expr_app<(Expression, Expression)>, do_parse!(
+named!(expr_app<(Expression, Expression)>, ws!(do_parse!(
     tag!("(") >>
     tag!("app") >>
     func: expression >>
     arg: expression >>
     tag!(")") >>
     (func, arg)
-));
+)));
 
 named!(expr_box<Expression>, do_parse!(
     tag!("(") >>
