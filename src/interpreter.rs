@@ -1,5 +1,6 @@
 use ty::Expression;
-use std::collections::HashMap;
+use std::collections::{HashMap};
+use std::vec::Vec;
 
 type Location = u64;
 
@@ -13,13 +14,15 @@ pub fn counter() -> Box<FnMut() -> u64> {
 
 // static mut new_loc: Box<FnMut() -> isize> = counter();
 
-
 #[derive(Debug,PartialEq,Clone)]
 pub struct Binding {
     name: String,
     loc: Location,
 }
 
+pub type Env = Vec<Binding>;
+
+/*
 #[derive(Debug,PartialEq,Clone)]
 pub enum Env {
     MtEnv,
@@ -28,6 +31,7 @@ pub enum Env {
     // 因为Env对rest有所有权，用&Env只是借用，并没有所有权
     ExtendEnv{with: Binding, rest: Box<Env>} 
 }
+*/
 
 #[derive(Debug,PartialEq,Clone)]
 pub enum Value {
@@ -86,15 +90,13 @@ fn num_op<F: Fn(isize, isize) -> isize>(op: F, left: &Value, right: &Value) -> V
 }
 
 fn lookup(what: &String, in_env: &Env) -> Location {
-    match in_env {
-        &Env::MtEnv => panic!(format!("lookup: unbound identifier '{}'", what)),
-        &Env::ExtendEnv{ref with, ref rest} => 
-            if what.eq(&with.name) {
-                with.loc
-            } else {
-                lookup(what, rest.as_ref())
-            }
+    let mut iter = in_env.iter().rev();
+    while let Some(ref binding) = iter.next() {
+        if what.eq(&binding.name) {
+            return binding.loc
+        }
     }
+    panic!(format!("lookup: unbound identifier '{}'", what));
 }
 
 fn fetch(what: Location, sto: &Store) -> Value {
@@ -182,13 +184,12 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &mut Env, s
                 let arg_val = interp(new_loc, arg, env, sto);
                 let nloc = new_loc();
                 sto.insert(nloc, arg_val);
+                let mut nenv = clos_env.clone();
+                nenv.push(Binding { name: clos_arg.clone(), loc: nloc });
                 interp(
                     new_loc,
                     clos_body,
-                    &mut Env::ExtendEnv {
-                        with: Binding { name: clos_arg.clone(), loc: nloc },
-                        rest: Box::new(clos_env.clone())
-                    },
+                    &mut nenv,
                     sto)
             } else {
                 panic!("interpretation of lambda must be closure")
@@ -224,10 +225,8 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &mut Env, s
             let val = interp(new_loc, to_.as_ref(), env, sto);
             let nloc = new_loc();
             sto.insert(nloc, val);
-            let mut nenv = Env::ExtendEnv{
-                with: Binding{name: what_.clone(), loc: nloc},
-                rest: Box::new(env.clone())
-            };
+            let mut nenv = env.clone();
+            nenv.push(Binding{name: what_.clone(), loc: nloc});
             interp(new_loc, in_.as_ref(), &mut nenv, sto)
         },
         &Expression::List(ref list) => {
@@ -250,10 +249,7 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &mut Env, s
         &Expression::Define(ref name, ref val) => {
             let new_val = interp(new_loc, val, env, sto);
             let nloc = new_loc();
-            if let &mut Env::ExtendEnv{ref mut with, ref mut rest} = env {
-                *rest = Box::new(Env::ExtendEnv{with: *with, rest: *rest});
-                *with = Binding { name: name.clone(), loc: nloc };
-            }
+            env.push(Binding {name: name.clone(), loc: nloc});
             sto.insert(nloc, new_val);
             Value::NilV
         },
@@ -263,7 +259,8 @@ fn interp(new_loc: &mut Box<FnMut() -> u64>, expr: &Expression, env: &mut Env, s
 pub fn interpret(expr: &Expression) -> Value {
     let mut store = Store::new();
     let mut new_loc = counter();
-    interp(&mut new_loc, expr, &mut Env::MtEnv, &mut store)
+    let mut env = Vec::new();
+    interp(&mut new_loc, expr, &mut env, &mut store)
 }
 
 use parser::expression;
@@ -274,10 +271,11 @@ pub fn execute(source_code: &[u8]) -> Value {
     let mut store = Store::new();
     let mut new_loc = counter();
 
+    let mut env = Vec::new();
     loop {
         match expression(rest) {
             IResult::Done(_rest, ref expr) => {
-                let val = interp(&mut new_loc, expr, &mut Env::MtEnv, &mut store);
+                let val = interp(&mut new_loc, expr, &mut env, &mut store);
                 if _rest.len() == 0 {
                     return val;
                 } else {
@@ -287,5 +285,5 @@ pub fn execute(source_code: &[u8]) -> Value {
             _ => {panic!("throws IResult::Error: parse panic");}
         }
     }
-    panic!("should not enter here");
+    unreachable!();
 }

@@ -1,11 +1,11 @@
 extern crate plai_rust;
 extern crate nom;
 
-use plai_rust::parser::{expression, expr_list_id, expr_object};
+use plai_rust::parser::{expression, expr_list_id};
 use plai_rust::ty::Expression;
-use plai_rust::interpreter::{interpret, Value, Env, execute};
+use plai_rust::interpreter::{interpret, Value, execute};
 
-use nom::{IResult, ErrorKind};
+use nom::{IResult};
 
 #[test]
 fn test_plus() {
@@ -164,7 +164,7 @@ fn test_lambda() {
         assert_eq!(result, Value::ClosV{
             arg: String::from("x"),
             body: Expression::Plus(Box::new(Expression::ID(String::from("x"))), Box::new(Expression::Num(1))),
-            env: Env::MtEnv});
+            env: Vec::new()});
     } else {
         assert!(false);
     }
@@ -409,7 +409,7 @@ fn test_list_lambda() {
            (list (lambda x (+ x 1))
                  (lambda x (+ x -1)))";
 
-    if let IResult::Done(_, expr) = expression(raw_string) {
+    if let IResult::Done(_, _) = expression(raw_string) {
     } else {
         assert!(false);
     }
@@ -422,7 +422,7 @@ fn test_object_parse() {
             (list add1 sub1)
             (list (lambda x (+ x 1))
                   (lambda x (+ x -1))))";
-    if let IResult::Done(_, expr) = expression(raw_string) {
+    if let IResult::Done(_, _) = expression(raw_string) {
     } else {
         assert!(false);
     }
@@ -460,6 +460,18 @@ fn test_execute_object() {
               (list (lambda x (+ x 1))
                     (lambda x (+ x -1))))
          (msg o add1 3))";
+
+    let result = execute(raw_string);
+    assert_eq!(result, Value::NumV(4));
+}
+
+#[test]
+fn test_execute_define_simple() {
+    let raw_string = b"
+    (define add
+      (lambda x (+ x 1)))
+    (app add 3)
+    ";
 
     let result = execute(raw_string);
     assert_eq!(result, Value::NumV(4));
